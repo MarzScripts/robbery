@@ -732,7 +732,7 @@ Config.HousesToRob = {
         
         StaticProps = {
             TV = { model = `prop_tv_06`, Label = "Premium TV", Item = "television", Count = 1 },
-            SCULPTER = { model = `v_res_sculpt_decb`, Label = "Sculpter", Item = "SCULPTER = { model = `v_res_sculpt_decb`, Label = "Sculpter", Item = "sculpter", Count = 1 },
+            SCULPTER = { model = `v_res_sculpt_decb`, Label = "Sculpter", Item = "sculpter", Count = 1 },
            ART = { model = `v_res_r_painting`, Label = "Painting", Item = "art_piece", Count = 1 },
        },
    },
