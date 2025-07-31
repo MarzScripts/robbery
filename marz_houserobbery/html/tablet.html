@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marz House Robbery</title>
+    <link rel="stylesheet" href="tablet.css">
+    <style>
+        /* Stealth UI Styles - Embedded */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        .stealth-container {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 80px;
+            height: 300px;
+            z-index: 10000;
+            font-family: 'Orbitron', monospace;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .stealth-container.hidden {
+            opacity: 0;
+            display: none;
+        }
+
+        .noise-bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+        }
+
+        .noise-bar-label {
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .noise-bar-wrapper {
+            position: relative;
+            height: 200px;
+            width: 20px;
+            margin-bottom: 15px;
+        }
+
+        .noise-bar-background {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, 
+                rgba(0, 0, 0, 0.8) 0%, 
+                rgba(20, 20, 20, 0.9) 100%);
+            border: 2px solid #ffffff;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 10px rgba(255, 255, 255, 0.3),
+                inset 0 0 10px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .noise-bar-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            background: linear-gradient(180deg, 
+                #ff0000 0%,
+                #ffff00 60%,
+                #00ff00 100%
+            );
+            border-radius: 0 0 8px 8px;
+            transition: height 0.1s ease-out;
+            box-shadow: 
+                0 0 15px rgba(255, 255, 255, 0.4),
+                inset 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .noise-bar-threshold {
+            position: absolute;
+            width: calc(100% + 6px);
+            height: 2px;
+            background: #ff0000;
+            left: -3px;
+            top: 15%;
+            box-shadow: 
+                0 0 8px #ff0000,
+                0 0 15px rgba(255, 0, 0, 0.5);
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { 
+                opacity: 1; 
+                box-shadow: 0 0 8px #ff0000, 0 0 15px rgba(255, 0, 0, 0.5);
+            }
+            50% { 
+                opacity: 0.6; 
+                box-shadow: 0 0 15px #ff0000, 0 0 25px rgba(255, 0, 0, 0.8);
+            }
+        }
+
+        .noise-bar-percentage {
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        .stealth-hints {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .hint {
+            color: #ffff00;
+            font-size: 9px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 3px 6px;
+            border-radius: 3px;
+            border: 1px solid #ffff00;
+            white-space: nowrap;
+            transition: opacity 0.3s ease;
+            animation: blink 1s infinite;
+        }
+
+        .hint.hidden {
+            opacity: 0;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+
+        .voice-hint {
+            color: #ff6600 !important;
+            border-color: #ff6600 !important;
+            animation: urgent-blink 0.5s infinite;
+        }
+
+        @keyframes urgent-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .status-indicators {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 4px 8px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status-icon {
+            font-size: 12px;
+        }
+
+        .status-text {
+            color: #ffffff;
+            font-size: 8px;
+            font-weight: 700;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .status-item.still { border-color: #00ff00; }
+        .status-item.walking { border-color: #ffff00; }
+        .status-item.running { border-color: #ff9900; }
+        .status-item.sprinting { border-color: #ff0000; }
+        .status-item.quiet { border-color: #00ff00; }
+        .status-item.talking { border-color: #ffff00; }
+        .status-item.loud { border-color: #ff0000; }
+    </style>
+</head>
+<body>
+    <!-- Your existing tablet content goes here -->
+    <div id="tablet-container" class="tablet-container hidden">
+        <!-- Add your existing tablet HTML content here -->
+    </div>
+
+    <!-- Stealth UI - Added to existing tablet -->
+    <div id="stealth-container" class="stealth-container hidden">
+        <div class="noise-bar-container">
+            <div class="noise-bar-label">NOISE</div>
+            <div class="noise-bar-wrapper">
+                <div class="noise-bar-background">
+                    <div class="noise-bar-fill" id="noise-fill"></div>
+                    <div class="noise-bar-threshold" id="threshold-line"></div>
+                </div>
+                <div class="noise-bar-percentage" id="noise-percentage">0%</div>
+            </div>
+            <div class="stealth-hints" id="stealth-hints">
+                <div class="hint crouch-hint hidden" id="crouch-hint">CROUCH TO BE QUIET</div>
+                <div class="hint voice-hint hidden" id="voice-hint">STOP TALKING!</div>
+            </div>
+        </div>
+        
+        <div class="status-indicators">
+            <div class="status-item" id="movement-status">
+                <span class="status-icon">👣</span>
+                <span class="status-text" id="movement-text">Still</span>
+            </div>
+            <div class="status-item" id="voice-status">
+                <span class="status-icon">🎤</span>
+                <span class="status-text" id="voice-text">Quiet</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="tablet.js"></script>
+    <script>
+        // FIXED: Stealth UI JavaScript with proper object handling
+        let stealthContainer;
+        let noiseFill;
+        let noisePercentage;
+        let thresholdLine;
+        let crouchHint;
+        let voiceHint;
+        let movementStatus;
+        let voiceStatus;
+        let movementText;
+        let voiceText;
+
+        // Initialize stealth UI elements
+        document.addEventListener('DOMContentLoaded', function() {
+            stealthContainer = document.getElementById('stealth-container');
+            noiseFill = document.getElementById('noise-fill');
+            noisePercentage = document.getElementById('noise-percentage');
+            thresholdLine = document.getElementById('threshold-line');
+            crouchHint = document.getElementById('crouch-hint');
+            voiceHint = document.getElementById('voice-hint');
+            movementStatus = document.getElementById('movement-status');
+            voiceStatus = document.getElementById('voice-status');
+            movementText = document.getElementById('movement-text');
+            voiceText = document.getElementById('voice-text');
+            
+            console.log('Stealth UI initialized successfully');
+        });
+
+        // FIXED: Enhanced message handler with proper logging
+        window.addEventListener('message', function(event) {
+            const data = event.data;
+            
+            // FIXED: Proper object logging
+            console.log('Received message action:', data.action);
+            console.log('Full message data:', JSON.stringify(data, null, 2));
+            
+            switch(data.action) {
+                // Stealth UI actions
+                case 'showStealthUI':
+                    console.log('Showing stealth UI');
+                    showStealthUI();
+                    break;
+                    
+                case 'hideStealthUI':
+                    console.log('Hiding stealth UI');
+                    hideStealthUI();
+                    break;
+                    
+                case 'updateNoise':
+                    console.log('Updating noise:', data.noiseLevel, '/', data.maxNoise, '(threshold:', data.threshold + ')');
+                    updateNoiseBar(data.noiseLevel, data.maxNoise, data.threshold);
+                    break;
+                    
+                case 'updateMovement':
+                    console.log('Updating movement:', data.movementType);
+                    updateMovementStatus(data.movementType, data.noiseLevel);
+                    break;
+                    
+                case 'updateVoice':
+                    console.log('Updating voice:', data.isTalking, data.voiceLevel);
+                    updateVoiceStatus(data.isTalking, data.voiceLevel);
+                    break;
+                    
+                case 'showHints':
+                    console.log('Updating hints - crouch:', data.showCrouch, 'voice:', data.showVoice);
+                    updateHints(data.showCrouch, data.showVoice);
+                    break;
+                    
+                // Add your existing tablet actions here
+                default:
+                    console.log('Unknown action:', data.action);
+                    break;
+            }
+        });
+
+        function showStealthUI() {
+            console.log('showStealthUI called');
+            if (stealthContainer) {
+                stealthContainer.classList.remove('hidden');
+                console.log('Stealth UI shown');
+            } else {
+                console.error('stealthContainer not found!');
+            }
+        }
+
+        function hideStealthUI() {
+            console.log('hideStealthUI called');
+            if (stealthContainer) {
+                stealthContainer.classList.add('hidden');
+                console.log('Stealth UI hidden');
+            } else {
+                console.error('stealthContainer not found!');
+            }
+        }
+
+        function updateNoiseBar(noiseLevel, maxNoise, threshold) {
+            if (!noiseFill || !noisePercentage || !thresholdLine) {
+                console.error('Noise bar elements not found!');
+                return;
+            }
+            
+            const percentage = (noiseLevel / maxNoise) * 100;
+            const thresholdPercentage = (threshold / maxNoise) * 100;
+            
+            console.log('Updating noise bar - Level:', noiseLevel, 'Percentage:', percentage.toFixed(1) + '%');
+            
+            // Update bar fill
+            noiseFill.style.height = percentage + '%';
+            
+            // Update percentage text
+            noisePercentage.textContent = Math.round(percentage) + '%';
+            
+            // Update threshold line position
+            thresholdLine.style.bottom = thresholdPercentage + '%';
+            
+            // Change container border color based on danger level
+            const container = document.querySelector('.noise-bar-background');
+            if (container) {
+                if (percentage >= thresholdPercentage) {
+                    container.style.borderColor = '#ff0000';
+                    container.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.8), inset 0 0 10px rgba(0, 0, 0, 0.5)';
+                    console.log('NOISE THRESHOLD EXCEEDED!', percentage + '% >= ' + thresholdPercentage + '%');
+                } else if (percentage >= 70) {
+                    container.style.borderColor = '#ffff00';
+                    container.style.boxShadow = '0 0 15px rgba(255, 255, 0, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.5)';
+                } else {
+                    container.style.borderColor = '#ffffff';
+                    container.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(0, 0, 0, 0.5)';
+                }
+            }
+        }
+
+        function updateMovementStatus(movementType, noiseLevel) {
+            if (!movementStatus || !movementText) return;
+            
+            movementStatus.classList.remove('still', 'walking', 'running', 'sprinting');
+            
+            switch(movementType) {
+                case 'still':
+                    movementText.textContent = 'Still';
+                    movementStatus.classList.add('still');
+                    break;
+                case 'walking':
+                    movementText.textContent = 'Walking';
+                    movementStatus.classList.add('walking');
+                    break;
+                case 'running':
+                    movementText.textContent = 'Running';
+                    movementStatus.classList.add('running');
+                    break;
+                case 'sprinting':
+                    movementText.textContent = 'Sprinting';
+                    movementStatus.classList.add('sprinting');
+                    break;
+                case 'crouching':
+                    movementText.textContent = 'Crouching';
+                    movementStatus.classList.add('still');
+                    break;
+            }
+        }
+
+        function updateVoiceStatus(isTalking, voiceLevel) {
+            if (!voiceStatus || !voiceText) return;
+            
+            voiceStatus.classList.remove('quiet', 'talking', 'loud');
+            
+            if (!isTalking) {
+                voiceText.textContent = 'Quiet';
+                voiceStatus.classList.add('quiet');
+            } else {
+                if (voiceLevel <= 30) {
+                    voiceText.textContent = 'Whisper';
+                    voiceStatus.classList.add('quiet');
+                } else if (voiceLevel <= 70) {
+                    voiceText.textContent = 'Talking';
+                    voiceStatus.classList.add('talking');
+                } else {
+                    voiceText.textContent = 'Loud!';
+                    voiceStatus.classList.add('loud');
+                }
+            }
+        }
+
+        function updateHints(showCrouch, showVoice) {
+            if (crouchHint) {
+                if (showCrouch) {
+                    crouchHint.classList.remove('hidden');
+                } else {
+                    crouchHint.classList.add('hidden');
+                }
+            }
+            
+            if (voiceHint) {
+                if (showVoice) {
+                    voiceHint.classList.remove('hidden');
+                } else {
+                    voiceHint.classList.add('hidden');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

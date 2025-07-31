@@ -1,0 +1,307 @@
+let currentLicenses = {};
+let playerLicenses = {};
+let playerMoney = {};
+let currentLicenseId = '';
+let isDrawing = false;
+let signatureCanvas;
+let signatureCtx;
+
+window.addEventListener('message', function(event) {
+    var data = event.data;
+    
+    switch (data.action) {
+        case 'openTablet':
+            openTablet(data);
+            break;
+        case 'closeTablet':
+            closeTablet();
+            break;
+        case 'openDocument':
+            openDocument(data);
+            break;
+        case 'closeDocument':
+            closeDocument();
+            break;
+        case 'startLicenseProcess':
+            startLicenseProcess(data);
+            break;
+        case 'photoTaken':
+            photoTaken(data);
+            break;
+    }
+});
+
+function openTablet(data) {
+    currentLicenses = data.licenses;
+    playerLicenses = data.playerLicenses || {};
+    playerMoney = data.playerMoney || {};
+    
+    $('#tablet').fadeIn(300);
+    populateLicenseGrid();
+}
+
+function closeTablet() {
+    $('#tablet').fadeOut(300);
+    $.post('https://marz_id/closeTablet', {});
+}
+
+function populateLicenseGrid() {
+    const grid = $('#licenseGrid');
+    grid.empty();
+    
+    // Group licenses by category
+    const categories = {};
+    Object.entries(currentLicenses).forEach(([id, license]) => {
+        if (!categories[license.category]) {
+            categories[license.category] = [];
+        }
+        categories[license.category].push({id, ...license});
+    });
+    
+    // Create category sections
+    Object.entries(categories).forEach(([category, licenses]) => {
+        const categorySection = $(`
+            <div class="license-category">
+                <h3 class="category-title">${category}</h3>
+                <div class="category-licenses">
+                    ${licenses.map(license => createLicenseCard(license)).join('')}
+                </div>
+            </div>
+        `);
+        grid.append(categorySection);
+    });
+    
+    // Show grid, hide process
+    $('#licenseGrid').show();
+    $('#licenseProcess').hide();
+}
+
+function createLicenseCard(license) {
+    const hasLicense = playerLicenses[license.licenseType];
+    const canAfford = playerMoney.cash >= license.price;
+    const meetsRequirements = checkRequirements(license.requirements);
+    
+    let statusClass = '';
+    let statusText = '';
+    let buttonText = '';
+    let buttonDisabled = '';
+    
+    if (hasLicense) {
+        statusClass = 'owned';
+        statusText = 'OWNED';
+        buttonText = 'OWNED';
+        buttonDisabled = 'disabled';
+    } else if (!meetsRequirements) {
+        statusClass = 'requirements';
+        statusText = 'REQUIREMENTS NOT MET';
+        buttonText = 'UNAVAILABLE';
+        buttonDisabled = 'disabled';
+    } else if (!canAfford) {
+        statusClass = 'expensive';
+        statusText = 'INSUFFICIENT FUNDS';
+        buttonText = `$${license.price}`;
+        buttonDisabled = 'disabled';
+    } else {
+        statusClass = 'available';
+        statusText = 'AVAILABLE';
+        buttonText = `BUY - $${license.price}`;
+        buttonDisabled = '';
+    }
+    
+    return `
+        <div class="license-card ${statusClass}">
+            <div class="license-icon">${license.icon}</div>
+            <div class="license-info">
+                <h4 class="license-name">${license.name}</h4>
+                <p class="license-description">${license.description}</p>
+                <div class="license-price">$${license.price}</div>
+                <div class="license-status">${statusText}</div>
+            </div>
+            <button class="license-btn ${statusClass}" 
+                    ${buttonDisabled} 
+                    onclick="purchaseLicense('${license.id}')">
+                ${buttonText}
+            </button>
+        </div>
+    `;
+}
+
+function checkRequirements(requirements) {
+    if (!requirements || requirements.length === 0) return true;
+    
+    return requirements.every(req => {
+        const reqLicense = currentLicenses[req];
+        return reqLicense && playerLicenses[reqLicense.licenseType];
+    });
+}
+
+function purchaseLicense(licenseId) {
+    currentLicenseId = licenseId;
+    const license = currentLicenses[licenseId];
+    
+    $('#licenseName').text(license.name);
+    $('#licenseDescription').text(license.description);
+    $('#licensePrice').text(`$${license.price}`);
+    $('#processTitle').text(`${license.name} Application`);
+    
+    // Show process screen
+    $('#licenseGrid').hide();
+    $('#licenseProcess').show();
+    
+    // Show payment step
+    showStep('paymentStep');
+}
+
+function payForLicense() {
+    $.post('https://marz_id/purchaseLicense', {
+        licenseId: currentLicenseId
+    });
+    
+    // Move to photo step
+    showStep('photoStep');
+}
+
+function takePhoto() {
+    $.post('https://marz_id/takePhoto', {});
+}
+
+function photoTaken(data) {
+    $('#photoPreview').html(`
+        <i class="fas fa-check-circle"></i>
+        <p>Photo taken successfully</p>
+    `);
+    
+    setTimeout(() => {
+        showStep('signatureStep');
+        initSignatureCanvas();
+    }, 1000);
+}
+
+function showStep(stepId) {
+    $('.process-step').hide();
+    $(`#${stepId}`).show();
+}
+
+function initSignatureCanvas() {
+    signatureCanvas = document.getElementById('signatureCanvas');
+    signatureCtx = signatureCanvas.getContext('2d');
+    
+    signatureCtx.strokeStyle = '#000';
+    signatureCtx.lineWidth = 2;
+    signatureCtx.lineCap = 'round';
+    
+    // Mouse events
+    signatureCanvas.addEventListener('mousedown', startDrawing);
+    signatureCanvas.addEventListener('mousemove', draw);
+    signatureCanvas.addEventListener('mouseup', stopDrawing);
+    
+    // Touch events for mobile
+    signatureCanvas.addEventListener('touchstart', handleTouch);
+    signatureCanvas.addEventListener('touchmove', handleTouch);
+    signatureCanvas.addEventListener('touchend', stopDrawing);
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(x, y);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    signatureCtx.lineTo(x, y);
+    signatureCtx.stroke();
+}
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type.replace('touch', 'mouse'), {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    signatureCanvas.dispatchEvent(mouseEvent);
+}
+
+function clearSignature() {
+    signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+}
+
+function submitApplication() {
+    const signatureData = signatureCanvas.toDataURL();
+    
+    $.post('https://marz_id/saveSignature', {
+        signature: signatureData
+    });
+    
+    // Close tablet after successful submission
+    setTimeout(() => {
+        closeTablet();
+    }, 1000);
+}
+
+function backToGrid() {
+    populateLicenseGrid();
+}
+
+// Document display functions
+function openDocument(data) {
+    if (data.documentInfos) {
+        $("#document").fadeIn(285);
+        
+        $(".document-container").removeClass().addClass("document-container " + data.type);
+        $(".document-type").html(data.documentOptions.header);
+        $(".material-symbols-outlined").html(data.documentOptions.icon);
+
+        $("#info-1").html("Name");
+        $("#infoDescription-1").html(`${data.documentInfos.firstname} ${data.documentInfos.lastname}`);
+        $("#info-2").html("Date of Birth");
+        $("#infoDescription-2").html(data.documentInfos.dob);
+
+        // Document-specific information
+        if (data.type == "id_card") {
+            $("#info-3").html("Nationality");
+            $("#infoDescription-3").html(data.documentInfos.nationality);
+            $("#info-4").html("Sex");
+            $("#infoDescription-4").html(data.documentInfos.sex);
+        } else if (data.type == "drivers_license") {
+            $("#info-3").html("Sex");
+            $("#infoDescription-3").html(data.documentInfos.sex);
+            $("#info-4").html("Authorized Licenses");
+            $("#infoDescription-4").html(`${data.documentInfos.drive_bike} ${data.documentInfos.drive} ${data.documentInfos.drive_truck}`);
+        }
+        // Add other document types as needed
+
+        if (data.playerImage) {
+            $(".image").html(`<img class="playerMugshot" src="${data.playerImage}" alt="Photo">`);
+        }
+    }
+}
+
+function closeDocument() {
+    $("#document").fadeOut(285);
+}
+
+// ESC key handling
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if ($('#tablet').is(':visible')) {
+            closeTablet();
+        } else if ($('#document').is(':visible')) {
+            closeDocument();
+        }
+    }
+});
