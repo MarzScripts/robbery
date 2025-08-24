@@ -194,7 +194,8 @@ CreateThread(function()
         
         -- Yield every 10 houses
         if houseCount % 10 == 0 then
-            Wait(0)end
+            Wait(0)
+        end
    
    if Config.Debug then
        print("All houses initialized: " .. houseCount)
